@@ -53,6 +53,11 @@ def write_file(args: str) -> str:
     return f"Wrote {len(content)} bytes to {path}"
 
 
+def ask_user(question: str) -> str:
+    """Prompt the human for input and return their response."""
+    return input(question + "\n")
+
+
 class OpenAILLM:
     """Small wrapper around the OpenAI chat completions API."""
 
@@ -131,6 +136,7 @@ def build_default_agent() -> Agent:
         Tool("run", "Execute a shell command", run_shell),
         Tool("read", "Read a file", read_file),
         Tool("write", "Write to a file. Usage: '<path> <content>'", write_file),
+        Tool("ask", "Ask the user for input", ask_user),
     ]
     llm = OpenAILLM(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
     system_prompt = "You are a helpful coding agent."
@@ -138,7 +144,7 @@ def build_default_agent() -> Agent:
 
 
 def main() -> None:
-    goal = os.getenv("AGENT_GOAL", "List files in the current directory")
+    goal = os.getenv("AGENT_GOAL") or input("Enter your goal: ")
     agent = build_default_agent()
     result = agent.run(goal)
     print(result)

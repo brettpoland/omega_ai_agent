@@ -20,5 +20,8 @@ export OPENAI_API_KEY=sk-...
 python agent.py
 ```
 
-You can customise the goal with `AGENT_GOAL` and the model with
-`OPENAI_MODEL`.
+When run without an `AGENT_GOAL` environment variable, the agent
+asks you for a goal interactively. During execution it may call the
+`ask` tool to request additional input from you.
+
+You can customise the model with `OPENAI_MODEL`.
