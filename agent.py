@@ -19,6 +19,9 @@ from typing import Callable, Dict, List
 import requests
 
 
+MEMORY_FILE = os.getenv("AGENT_MEMORY_FILE", "agent_memory.json")
+
+
 @dataclass
 class Tool:
     """A callable that the language model can use."""
@@ -58,6 +61,26 @@ def ask_user(question: str) -> str:
     return input(question + "\n")
 
 
+def search_files(pattern: str) -> str:
+    """Search project files for ``pattern`` using ripgrep."""
+    result = subprocess.run(
+        ["rg", "--line-number", pattern], capture_output=True, text=True, timeout=60
+    )
+    if result.returncode == 1:
+        return "No matches found."
+    return result.stdout + result.stderr
+
+
+def run_git(args: str) -> str:
+    """Run a git command and return its output."""
+    return run_shell(f"git {args}")
+
+
+def run_tests(_: str) -> str:
+    """Execute the project's test suite using pytest."""
+    return run_shell("pytest -q")
+
+
 class OpenAILLM:
     """Small wrapper around the OpenAI chat completions API."""
 
@@ -89,10 +112,25 @@ class Agent:
         self.history: List[Dict[str, str]] = [
             {"role": "system", "content": system_prompt}
         ]
+        self.memory_file = MEMORY_FILE
+        if os.path.exists(self.memory_file):
+            try:
+                with open(self.memory_file, "r", encoding="utf-8") as f:
+                    past = json.load(f)
+                if isinstance(past, list):
+                    self.history.extend(past)
+            except json.JSONDecodeError:
+                pass
 
     def run(self, goal: str, max_steps: int = 8) -> str:
         """Attempt to satisfy ``goal`` using the available tools."""
         self.history.append({"role": "user", "content": goal})
+        plan_prompt = [
+            {"role": "system", "content": "Devise a short plan to accomplish the user's goal."},
+            {"role": "user", "content": goal},
+        ]
+        plan = self.llm.complete(plan_prompt)
+        self.history.append({"role": "assistant", "content": f"Plan:\n{plan}"})
         for _ in range(max_steps):
             reply = self.llm.complete(self.history + [self._tool_instructions()])
             try:
@@ -101,12 +139,15 @@ class Agent:
                 self.history.append({"role": "assistant", "content": reply})
                 continue
             if action.get("tool") == "finish":
-                return action.get("answer", "")
+                answer = action.get("answer", "")
+                self._save_memory()
+                return answer
             tool_name = action.get("tool")
             tool_input = action.get("input", "")
             observation = self._use_tool(tool_name, tool_input)
             self.history.append({"role": "assistant", "content": reply})
             self.history.append({"role": "user", "content": f"Observation: {observation}"})
+        self._save_memory()
         return "Reached max steps without finishing"
 
     def _tool_instructions(self) -> Dict[str, str]:
@@ -130,6 +171,13 @@ class Agent:
         except Exception as exc:  # pragma: no cover - debugging aid
             return f"Tool {name} failed: {exc}"
 
+    def _save_memory(self) -> None:
+        try:
+            with open(self.memory_file, "w", encoding="utf-8") as f:
+                json.dump(self.history[-50:], f)
+        except OSError:
+            pass
+
 
 def build_default_agent() -> Agent:
     tools = [
@@ -137,9 +185,12 @@ def build_default_agent() -> Agent:
         Tool("read", "Read a file", read_file),
         Tool("write", "Write to a file. Usage: '<path> <content>'", write_file),
         Tool("ask", "Ask the user for input", ask_user),
+        Tool("search", "Search files for a pattern", search_files),
+        Tool("git", "Run git commands", run_git),
+        Tool("test", "Run tests with pytest", run_tests),
     ]
     llm = OpenAILLM(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
-    system_prompt = "You are a helpful coding agent."
+    system_prompt = os.getenv("AGENT_SYSTEM_PROMPT", "You are a helpful coding agent.")
     return Agent(tools, llm, system_prompt)
 
 
