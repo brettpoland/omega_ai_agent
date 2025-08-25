@@ -58,11 +58,7 @@ def write_file(args: str) -> str:
 
 def ask_user(question: str) -> str:
     """Prompt the human for input and return their response."""
-    # Display the question followed by a clear prompt so the user knows
-    # that the agent is waiting for input. Without an explicit prompt the
-    # cursor can appear on a blank line, making it seem like the agent has
-    # stalled.
-    return input(f"{question}\n> ")
+    return input(question + "\n")
 
 
 def search_files(pattern: str) -> str:
@@ -83,37 +79,6 @@ def run_git(args: str) -> str:
 def run_tests(_: str) -> str:
     """Execute the project's test suite using pytest."""
     return run_shell("pytest -q")
-
-
-def control_desktop(action: str) -> str:
-    """Capture the desktop and perform a simple automation.
-
-    The function saves a screenshot to ``desktop.png`` and performs a couple of
-    very small automations using ``pyautogui``. Currently it understands the
-    phrases "click start" and "open settings" which, when combined, will open
-    the system settings menu on most operating systems.
-
-    Parameters
-    ----------
-    action: str
-        Natural language description of the desired automation.
-    """
-
-    import pyautogui  # type: ignore
-
-    screenshot = pyautogui.screenshot()
-    path = "desktop.png"
-    screenshot.save(path)
-
-    lowered = action.lower()
-    if "click start" in lowered:
-        width, height = pyautogui.size()
-        pyautogui.moveTo(10, height - 10)
-        pyautogui.click()
-    if "open settings" in lowered:
-        pyautogui.write("settings")
-        pyautogui.press("enter")
-    return f"Screenshot saved to {path}"
 
 
 class OpenAILLM:
@@ -140,7 +105,10 @@ class OpenAILLM:
 
 class Agent:
     """A minimal perceive-think-act loop."""
+ 
 
+
+ 
     def __init__(self, tools: List[Tool], llm: OpenAILLM, system_prompt: str) -> None:
         self.tools = {t.name: t for t in tools}
         self.llm = llm
@@ -223,11 +191,6 @@ def build_default_agent() -> Agent:
         Tool("search", "Search files for a pattern", search_files),
         Tool("git", "Run git commands", run_git),
         Tool("test", "Run tests with pytest", run_tests),
-        Tool(
-            "desktop",
-            "Take a screenshot and perform simple desktop automations",
-            control_desktop,
-        ),
     ]
     llm = OpenAILLM(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
     system_prompt = os.getenv("AGENT_SYSTEM_PROMPT", "You are a helpful coding agent.")
@@ -235,10 +198,7 @@ def build_default_agent() -> Agent:
 
 
 def main() -> None:
-    goal = os.getenv("AGENT_GOAL")
-    if not goal:
-        # Provide a clear prompt so users know when to type their goal.
-        goal = input("Enter your goal:\n> ")
+    goal = os.getenv("AGENT_GOAL") or input("Enter your goal: ")
     agent = build_default_agent()
     result = agent.run(goal)
     print(result)
