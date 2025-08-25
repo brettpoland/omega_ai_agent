@@ -58,7 +58,11 @@ def write_file(args: str) -> str:
 
 def ask_user(question: str) -> str:
     """Prompt the human for input and return their response."""
-    return input(question + "\n")
+    # Display the question followed by a clear prompt so the user knows
+    # that the agent is waiting for input. Without an explicit prompt the
+    # cursor can appear on a blank line, making it seem like the agent has
+    # stalled.
+    return input(f"{question}\n> ")
 
 
 def search_files(pattern: str) -> str:
@@ -195,7 +199,10 @@ def build_default_agent() -> Agent:
 
 
 def main() -> None:
-    goal = os.getenv("AGENT_GOAL") or input("Enter your goal: ")
+    goal = os.getenv("AGENT_GOAL")
+    if not goal:
+        # Provide a clear prompt so users know when to type their goal.
+        goal = input("Enter your goal:\n> ")
     agent = build_default_agent()
     result = agent.run(goal)
     print(result)
