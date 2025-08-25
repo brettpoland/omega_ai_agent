@@ -149,10 +149,7 @@ class OpenAILLM:
 
 class Agent:
     """A minimal perceive-think-act loop."""
- 
 
-
- 
     def __init__(self, tools: List[Tool], llm: OpenAILLM, system_prompt: str) -> None:
         self.tools = {t.name: t for t in tools}
         self.llm = llm
@@ -242,9 +239,17 @@ def build_default_agent() -> Agent:
 
 
 def main() -> None:
-    goal = os.getenv("AGENT_GOAL") or input("Enter your goal: ")
+    print("[DEBUG] main() started")
+    if os.getenv("AGENT_GOAL"):
+        goal = os.getenv("AGENT_GOAL")
+        print(f"[DEBUG] AGENT_GOAL found: {goal}")
+    else:
+        print("[DEBUG] No AGENT_GOAL env var, prompting for input...")
+        goal = input("Enter your goal: ")
     agent = build_default_agent()
+    print("[DEBUG] Agent built, running agent.run()...")
     result = agent.run(goal)
+    print("[DEBUG] Agent finished. Result:")
     print(result)
 
 
