@@ -60,7 +60,7 @@ class OpenAILLM:
         self.model = model
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
-            raise RuntimeError("OPENAI_API_KEY env var is required")
+            raise RuntimeError("OPENAI_API_KEY env var is required. Please set it in your environment.")
 
     def complete(self, messages: List[Dict[str, str]]) -> str:
         url = "https://api.openai.com/v1/chat/completions"
