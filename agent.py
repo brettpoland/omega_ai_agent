@@ -81,6 +81,50 @@ def run_tests(_: str) -> str:
     return run_shell("pytest -q")
 
 
+def control_desktop(command: str) -> str:
+    """Very small helper to automate a few desktop actions.
+
+    The function is intentionally tiny; it is only designed to demonstrate
+    rudimentary automation and to support the unit tests in this kata.  The
+    behaviour implemented here is extremely limited: it takes a screenshot of
+    the current desktop, moves the mouse to the bottom-left corner (where the
+    *Start* button typically resides), clicks, optionally types a search term
+    (e.g. "settings"), and presses ``Enter``.
+
+    Parameters
+    ----------
+    command:
+        Natural language instruction describing the desired action.  Only the
+        presence of the word "settings" is interpreted.
+
+    Returns
+    -------
+    str
+        Location of the saved screenshot.
+    """
+
+    # Import inside the function so test monkeypatching works without an actual
+    # GUI environment.
+    import pyautogui  # type: ignore
+    import tempfile
+
+    # Take a screenshot and persist it so it can be inspected later.
+    screenshot = pyautogui.screenshot()
+    path = os.path.join(tempfile.gettempdir(), "screenshot.png")
+    screenshot.save(path)
+
+    # Click the start button (bottom-left corner) and optionally open settings.
+    _, height = pyautogui.size()
+    pyautogui.moveTo(10, height - 10)
+    pyautogui.click()
+
+    if "settings" in command.lower():
+        pyautogui.write("settings")
+        pyautogui.press("enter")
+
+    return f"Screenshot saved to {path}"
+
+
 class OpenAILLM:
     """Small wrapper around the OpenAI chat completions API."""
 
