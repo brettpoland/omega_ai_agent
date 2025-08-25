@@ -7,6 +7,12 @@ The agent is roughly 150 lines of Python and demonstrates the core idea
 from the article: a loop that repeatedly plans, acts using tools, and
 observes the results.
 
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ```bash
