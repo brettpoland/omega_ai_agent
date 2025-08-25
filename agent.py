@@ -85,6 +85,37 @@ def run_tests(_: str) -> str:
     return run_shell("pytest -q")
 
 
+def control_desktop(action: str) -> str:
+    """Capture the desktop and perform a simple automation.
+
+    The function saves a screenshot to ``desktop.png`` and performs a couple of
+    very small automations using ``pyautogui``. Currently it understands the
+    phrases "click start" and "open settings" which, when combined, will open
+    the system settings menu on most operating systems.
+
+    Parameters
+    ----------
+    action: str
+        Natural language description of the desired automation.
+    """
+
+    import pyautogui  # type: ignore
+
+    screenshot = pyautogui.screenshot()
+    path = "desktop.png"
+    screenshot.save(path)
+
+    lowered = action.lower()
+    if "click start" in lowered:
+        width, height = pyautogui.size()
+        pyautogui.moveTo(10, height - 10)
+        pyautogui.click()
+    if "open settings" in lowered:
+        pyautogui.write("settings")
+        pyautogui.press("enter")
+    return f"Screenshot saved to {path}"
+
+
 class OpenAILLM:
     """Small wrapper around the OpenAI chat completions API."""
 
@@ -192,6 +223,11 @@ def build_default_agent() -> Agent:
         Tool("search", "Search files for a pattern", search_files),
         Tool("git", "Run git commands", run_git),
         Tool("test", "Run tests with pytest", run_tests),
+        Tool(
+            "desktop",
+            "Take a screenshot and perform simple desktop automations",
+            control_desktop,
+        ),
     ]
     llm = OpenAILLM(model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
     system_prompt = os.getenv("AGENT_SYSTEM_PROMPT", "You are a helpful coding agent.")
