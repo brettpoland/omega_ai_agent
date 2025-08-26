@@ -132,7 +132,18 @@ class OpenAILLM:
         self.model = model
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
-            raise RuntimeError("OPENAI_API_KEY env var is required. Please set it in your environment.")
+            # Prompt the user for an API key instead of failing immediately so the
+            # application can continue to run interactively. This mirrors the
+            # behaviour of the goal prompt and avoids a cryptic stack trace when the
+            # environment variable is missing.
+            try:
+                self.api_key = input("Enter your OpenAI API key: ").strip()
+            except EOFError:
+                self.api_key = ""
+        if not self.api_key:
+            raise RuntimeError(
+                "OPENAI_API_KEY env var is required. Please set it in your environment."
+            )
 
     def complete(self, messages: List[Dict[str, str]]) -> str:
         url = "https://api.openai.com/v1/chat/completions"
@@ -246,7 +257,11 @@ def main() -> None:
     else:
         print("[DEBUG] No AGENT_GOAL env var, prompting for input...")
         goal = input("Enter your goal: ")
-    agent = build_default_agent()
+    try:
+        agent = build_default_agent()
+    except RuntimeError as exc:
+        print(f"Error: {exc}")
+        return
     print("[DEBUG] Agent built, running agent.run()...")
     result = agent.run(goal)
     print("[DEBUG] Agent finished. Result:")
